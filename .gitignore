@@ -1,0 +1,31 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE folders
+.idea/
+.vscode/
+
+# Logs
+*.log
+error_log.txt
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Environment variables
+.env
+
+# Composer files
+composer.lock
+
+# Build files
+/build/
+/dist/

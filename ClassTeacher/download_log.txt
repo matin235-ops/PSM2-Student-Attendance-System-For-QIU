@@ -1,0 +1,40 @@
+2025-04-21 20:01:51 - Download attempted
+Parameters: Array
+(
+    [classInfo] => 12:19
+    [from] => 2025-04-21
+    [to] => 2025-04-21
+)
+
+ClassInfo: 12:19
+ClassId: 12, ArmId: 19
+2025-05-02 14:40:15 - Download attempted
+Parameters: Array
+(
+    [classInfo] => 3:16
+    [from] => 2025-05-02
+    [to] => 2025-05-02
+)
+
+ClassInfo: 3:16
+ClassId: 3, ArmId: 16
+2025-05-06 08:40:12 - Download attempted
+Parameters: Array
+(
+    [classInfo] => 12:18
+    [from] => 2025-05-02
+    [to] => 2025-05-06
+)
+
+ClassInfo: 12:18
+ClassId: 12, ArmId: 18
+2025-06-16 20:19:50 - Download attempted
+Parameters: Array
+(
+    [classInfo] => 16:28
+    [from] => 2025-06-16
+    [to] => 2025-06-16
+)
+
+ClassInfo: 16:28
+ClassId: 16, ArmId: 28
