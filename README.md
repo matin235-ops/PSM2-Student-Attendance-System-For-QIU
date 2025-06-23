@@ -92,8 +92,8 @@ This enterprise solution has been meticulously designed to address Qaiwan Intern
 
 #### 1. Repository Acquisition
 ```bash
-git clone https://github.com/matin235-ops/FYP2_Student-Attendance-System-For-QIU.git
-cd FYP2_Student-Attendance-System-For-QIU
+git clone https://github.com/matin235-ops/PSM2-Student-Attendance-System-For-QIU.git
+cd PSM2-Student-Attendance-System-For-QIU
 ```
 
 #### 2. Dependency Resolution
