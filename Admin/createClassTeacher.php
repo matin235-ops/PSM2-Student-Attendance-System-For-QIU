@@ -50,87 +50,98 @@ if (isset($_SESSION['status']) && isset($_SESSION['message'])) {
     unset($_SESSION['message']);
 }
 
-// Example for debugging SQL queries
-$query = "SELECT * FROM tblclassteacher WHERE emailAddress = ?";
-$stmt = $conn->prepare($query);
-if (!$stmt) {
-    debug("SQL Error: " . $conn->error);
-    die("SQL Error: " . $conn->error);
-}
-$stmt->bind_param("s", $emailAddress);
-$stmt->execute();
-$result = $stmt->get_result();
-if (!$result) {
-    debug("SQL Execution Error: " . $stmt->error);
-    die("SQL Execution Error: " . $stmt->error);
-}
-
 // Process form submission
 if(isset($_POST['save'])) {
-    $firstName = $_POST['firstName'];
-    $lastName = $_POST['lastName'];
-    $emailAddress = $_POST['emailAddress'];
-    $phoneNo = $_POST['phoneNo'];
+    // Debug: Log what we received
+    debug("Form submitted with data: " . print_r($_POST, true));
+    
+    $firstName = trim($_POST['firstName']);
+    $lastName = trim($_POST['lastName']);
+    $emailAddress = trim($_POST['emailAddress']);
+    $phoneNo = trim($_POST['phoneNo']);
     $password = $_POST['password'];
     $dateCreated = date("Y-m-d");
     
-    // Check if classes array exists and is not empty
-    if(!isset($_POST['classes']) || empty($_POST['classes'])) {
-        $statusMsg = "<div class='alert alert-danger' style='margin-right:700px;'>Please select at least one class!</div>";
+    // Validate input
+    if(empty($firstName) || empty($lastName) || empty($emailAddress) || empty($phoneNo) || empty($password)) {
+        $statusMsg = "<div class='alert alert-danger' style='margin-right:700px;'>Please fill in all required fields!</div>";
+        debug("Validation failed: missing required fields");
     } else {
         // Hash the password
         $hashedPassword = md5($password);
         
-        // Check if email exists
-        $query = mysqli_query($conn, "SELECT * FROM tblclassteacher WHERE emailAddress = '$emailAddress'");
-        $ret = mysqli_fetch_array($query);
+        // Check if email exists using prepared statement
+        $stmt = $conn->prepare("SELECT Id FROM tblclassteacher WHERE emailAddress = ?");
+        $stmt->bind_param("s", $emailAddress);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        if ($ret > 0) {
+        if ($result->num_rows > 0) {
             $statusMsg = "<div class='alert alert-danger' style='margin-right:700px;'>This Email Address Already Exists!</div>";
+            debug("Email already exists: " . $emailAddress);
         } else {
             try {
                 $conn->begin_transaction();
+                debug("Starting transaction for teacher creation");
                 
-                // Insert teacher
-                $query = mysqli_query($conn, "INSERT INTO tblclassteacher (firstName, lastName, emailAddress, password, phoneNo, dateCreated) 
-                    VALUES ('$firstName', '$lastName', '$emailAddress', '$hashedPassword', '$phoneNo', '$dateCreated')");
+                // Insert teacher using prepared statement
+                $stmt = $conn->prepare("INSERT INTO tblclassteacher (firstName, lastName, emailAddress, password, phoneNo, dateCreated) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("ssssss", $firstName, $lastName, $emailAddress, $hashedPassword, $phoneNo, $dateCreated);
                 
-                if ($query) {
+                if ($stmt->execute()) {
                     $teacherId = $conn->insert_id;
                     $success = true;
+                    debug("Teacher created with ID: " . $teacherId);
                     
-                    // Process each selected class
-                    foreach($_POST['classes'] as $class) {
-                        list($classId, $classArmId) = explode(':', $class);
-                        
-                        // Insert into teacher_classes table
-                        $query = mysqli_query($conn, "INSERT INTO teacher_classes (teacher_id, class_id, class_arm_id) 
-                            VALUES ('$teacherId', '$classId', '$classArmId')");
-                            
-                        if (!$query) {
-                            $success = false;
-                            break;
+                    // Process each selected class if any
+                    if(isset($_POST['classes']) && !empty($_POST['classes'])) {
+                        debug("Processing " . count($_POST['classes']) . " selected classes");
+                        foreach($_POST['classes'] as $class) {
+                            if(strpos($class, ':') !== false) {
+                                list($classId, $classArmId) = explode(':', $class);
+                                debug("Assigning class: $classId, arm: $classArmId");
+                                
+                                // Insert into teacher_classes table
+                                $stmt = $conn->prepare("INSERT INTO teacher_classes (teacher_id, class_id, class_arm_id) VALUES (?, ?, ?)");
+                                $stmt->bind_param("iii", $teacherId, $classId, $classArmId);
+                                
+                                if (!$stmt->execute()) {
+                                    debug("Failed to assign class: " . $stmt->error);
+                                    $success = false;
+                                    break;
+                                }
+                                
+                                // Update class arm status
+                                $stmt = $conn->prepare("UPDATE tblclassarms SET isAssigned='1' WHERE Id = ?");
+                                $stmt->bind_param("i", $classArmId);
+                                
+                                if (!$stmt->execute()) {
+                                    debug("Failed to update class arm status: " . $stmt->error);
+                                    $success = false;
+                                    break;
+                                }
+                            }
                         }
-                        
-                        // Update class arm status
-                        $qu = mysqli_query($conn, "UPDATE tblclassarms SET isAssigned='1' WHERE Id = '$classArmId'");
-                        if (!$qu) {
-                            $success = false;
-                            break;
-                        }
+                    } else {
+                        debug("No classes selected - teacher created without class assignments");
                     }
                     
                     if ($success) {
                         $conn->commit();
-                        $statusMsg = "<div class='alert alert-success' style='margin-right:700px;'>Created Successfully!</div>";
+                        debug("Transaction committed successfully");
+                        $_SESSION['status'] = 'success';
+                        $_SESSION['message'] = 'Teacher created successfully!';
+                        header("Location: createClassTeacher.php");
+                        exit();
                     } else {
                         throw new Exception("Error occurred while assigning classes");
                     }
                 } else {
-                    throw new Exception("Error occurred while creating teacher");
+                    throw new Exception("Error occurred while creating teacher: " . $stmt->error);
                 }
             } catch (Exception $e) {
                 $conn->rollback();
+                debug("Transaction rolled back: " . $e->getMessage());
                 $statusMsg = "<div class='alert alert-danger' style='margin-right:700px;'>An error Occurred: " . $e->getMessage() . "</div>";
             }
         }
@@ -671,6 +682,20 @@ if (!empty($classArray)) {
         .table tbody tr[style*="background-color"] {
             border-left: 3px solid #4e73df;
         }
+
+        /* Form validation styles */
+        .is-invalid {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+        }
+
+        .invalid-feedback {
+            display: block;
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875em;
+            color: #dc3545;
+        }
     </style>
 </head>
 
@@ -698,6 +723,11 @@ if (!empty($classArray)) {
                                         </button>
                                     </div>
                                     <?php endif; ?>
+                                    
+                                    <?php if (isset($statusMsg)): ?>
+                                        <?php echo $statusMsg; ?>
+                                    <?php endif; ?>
+                                    
                                     <form method="post" class="needs-validation" novalidate>
                                         <input type="hidden" name="teacherId" value="">
                                         <?php if($editTeacher) { ?>
@@ -748,8 +778,8 @@ if (!empty($classArray)) {
                                         <div class="form-row">
                                             <div class="col-12">
                                                 <div class="assign-classes-header">
-                                                    <h6 class="font-weight-bold">Assign Classes</h6>
-                                                    <small class="text-muted">Select stage and subjects</small>
+                                                    <h6 class="font-weight-bold">Assign Classes (Optional)</h6>
+                                                    <small class="text-muted">Select stage and subjects - You can create a teacher without assigning classes</small>
                                                 </div>
                                                 
                                                 <!-- Add stage selector -->
@@ -807,7 +837,7 @@ if (!empty($classArray)) {
                                                             
                                                             $isDisabled = !empty($subject['teacherId']) && 
                                                                         (!$editTeacher || 
-                                                                        ($editTeacher && $classId.':'.$subject['armId'] !== $editTeacher['assigned_classes']));
+                                                                        ($editTeacher && !in_array($classId.':'.$subject['armId'], explode(',', $editTeacher['assigned_classes'] ?? ''))));
                                                             
                                                             echo '<div class="subject-option '.($isDisabled ? 'disabled' : '').($isChecked ? ' selected' : '').'">';
                                                             echo '<div class="custom-control custom-checkbox">';
@@ -968,99 +998,68 @@ if (!empty($classArray)) {
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Simple form validation and submission
         const form = document.querySelector('form');
+        const submitButton = form.querySelector('button[type="submit"]');
 
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
+        // Handle form submission
+        form.addEventListener('submit', function(e) {
+            // Basic validation
+            const requiredFields = form.querySelectorAll('input[required]');
+            let isValid = true;
             
-            if (!this.checkValidity()) {
-                this.classList.add('was-validated');
-                return;
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                showFloatingAlert('Please fill in all required fields', 'danger');
+                return false;
             }
-
+            
             // Show loading state
-            const submitButton = this.querySelector('button[type="submit"]');
             const originalText = submitButton.innerHTML;
             submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
             submitButton.disabled = true;
-
-            try {
-                const formData = new FormData(this);
-                const response = await fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                // Form submitted successfully, page will reload to show the message
-                window.location.reload();
-                
-            } catch (error) {
-                console.error("Submission Error:", error);
-                showAlert(`Error: ${error.message}`, 'danger');
-                
-                // Reset button state
+            
+            // Form will submit normally, reset button after a delay in case of errors
+            setTimeout(() => {
                 submitButton.innerHTML = originalText;
                 submitButton.disabled = false;
-            }
+            }, 3000);
         });
 
-        // Add this helper function for showing alerts
-        function showAlert(message, type = 'success') {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-            alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            `;
+        // Handle class selection clicks
+        document.querySelectorAll('.subject-option').forEach(option => {
+            const checkbox = option.querySelector('input[type="checkbox"]');
             
-            const cardBody = document.querySelector('.card-body');
-            cardBody.insertBefore(alertDiv, cardBody.firstChild);
-            
-            // Auto-dismiss after 5 seconds
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 5000);
-        }
-
-        document.querySelectorAll('.class-option').forEach(option => {
-            option.onclick = (e) => {
-                if (e.target.type !== 'checkbox') {
-                    const checkbox = option.querySelector('input[type="checkbox"]');
-                    if (!checkbox.disabled) {
+            if (checkbox) {
+                // Update initial selected state
+                if (checkbox.checked) {
+                    option.classList.add('selected');
+                }
+                
+                // Handle option clicks
+                option.addEventListener('click', (e) => {
+                    if (!checkbox.disabled && e.target !== checkbox && e.target.tagName !== 'LABEL') {
                         checkbox.checked = !checkbox.checked;
                         option.classList.toggle('selected', checkbox.checked);
                     }
-                }
-            };
-        });
-
-        // Update checkbox handling
-        document.querySelectorAll('.class-option').forEach(option => {
-            const checkbox = option.querySelector('input[type="checkbox"]');
-            
-            // Update initial selected state
-            if (checkbox.checked) {
-                option.classList.add('selected');
+                });
+                
+                // Handle checkbox change
+                checkbox.addEventListener('change', (e) => {
+                    if (!checkbox.disabled) {
+                        option.classList.toggle('selected', checkbox.checked);
+                    }
+                });
             }
-            
-            option.addEventListener('click', (e) => {
-                if (!checkbox.disabled && e.target.type !== 'checkbox') {
-                    checkbox.checked = !checkbox.checked;
-                    option.classList.toggle('selected', checkbox.checked);
-                }
-            });
-            
-            checkbox.addEventListener('change', (e) => {
-                if (!checkbox.disabled) {
-                    option.classList.toggle('selected', checkbox.checked);
-                }
-            });
         });        // Add this optimized delete handler code after the existing DOMContentLoaded event listener
         document.querySelectorAll('.delete-teacher').forEach(button => {
             button.addEventListener('click', async function(e) {

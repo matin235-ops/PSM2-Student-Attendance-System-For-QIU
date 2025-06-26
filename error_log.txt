@@ -1,0 +1,40 @@
+[26-Jun-2025 20:39:41 Europe/Berlin] Form submitted with firstName: matin, lastName: jilwan, email: admin@mail.com
+[26-Jun-2025 20:40:07 Europe/Berlin] Form submitted with firstName: kio, lastName: hion, email: admin@mail.com
+[26-Jun-2025 20:49:42 Europe/Berlin] [DEBUG] Form submitted with data: Array
+(
+    [teacherId] => 
+    [firstName] => jjj
+    [lastName] => jilwan
+    [emailAddress] => admin@mail.com
+    [phoneNo] => 07502588565
+    [password] => 123
+    [classes] => Array
+        (
+            [0] => 17:29
+        )
+
+    [save] => 
+)
+
+[26-Jun-2025 20:49:42 Europe/Berlin] [DEBUG] Email already exists: admin@mail.com
+[26-Jun-2025 20:50:33 Europe/Berlin] [DEBUG] Form submitted with data: Array
+(
+    [teacherId] => 
+    [firstName] => kio
+    [lastName] => pijat
+    [emailAddress] => matin@mail.com
+    [phoneNo] => 444
+    [password] => 123
+    [classes] => Array
+        (
+            [0] => 17:29
+        )
+
+    [save] => 
+)
+
+[26-Jun-2025 20:50:33 Europe/Berlin] [DEBUG] Starting transaction for teacher creation
+[26-Jun-2025 20:50:33 Europe/Berlin] [DEBUG] Teacher created with ID: 60
+[26-Jun-2025 20:50:33 Europe/Berlin] [DEBUG] Processing 1 selected classes
+[26-Jun-2025 20:50:33 Europe/Berlin] [DEBUG] Assigning class: 17, arm: 29
+[26-Jun-2025 20:50:33 Europe/Berlin] [DEBUG] Transaction committed successfully

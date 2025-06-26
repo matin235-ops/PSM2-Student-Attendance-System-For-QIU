@@ -38,3 +38,13 @@ Parameters: Array
 
 ClassInfo: 16:28
 ClassId: 16, ArmId: 28
+2025-06-26 20:54:14 - Download attempted
+Parameters: Array
+(
+    [classInfo] => 24:36
+    [from] => 2025-06-26
+    [to] => 2025-06-26
+)
+
+ClassInfo: 24:36
+ClassId: 24, ArmId: 36
